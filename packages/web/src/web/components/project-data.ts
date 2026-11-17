@@ -1,0 +1,365 @@
+export const modules = [
+  {
+    id: "DS1",
+    name: "The face of plant care",
+    part: "1.28″ GC9A01 SPI TFT",
+    detail:
+      "240 × 240 RGB pixels. Dedicated 7-pin SPI display renders Happy, Neutral and Sad expressions.",
+    spec: "GPIO5 SCK · GPIO3 MOSI · GPIO10 CS · GPIO1 DC · GPIO0 RST",
+    x: 205,
+    y: 106,
+    w: 114,
+    h: 114,
+    color: "#267659",
+  },
+  {
+    id: "DS2",
+    name: "Every reading, at a glance",
+    part: "0.96″ SSD1306 OLED",
+    detail:
+      "128 × 64 monochrome pixels. Four-pin I²C module at 0x3C displays soil, light, temperature, humidity and pressure.",
+    spec: "GPIO6 SDA · GPIO7 SCL · +3V3 · GND",
+    x: 204,
+    y: 282,
+    w: 116,
+    h: 72,
+    color: "#2b657e",
+  },
+  {
+    id: "U1",
+    name: "A small but capable brain",
+    part: "ESP32-C3 SuperMini",
+    detail:
+      "32-bit RISC-V MCU at 160 MHz on a red PCB with USB-C and ceramic antenna. Eleven active signal and power nets.",
+    spec: "Single-node controller · Wi-Fi / BLE capable",
+    x: 435,
+    y: 215,
+    w: 78,
+    h: 120,
+    color: "#b5363b",
+  },
+  {
+    id: "B1",
+    name: "Sense beneath the surface",
+    part: "Capacitive soil sensor v1.2",
+    detail:
+      "Corrosion-resistant black blade probe with TLC555 oscillator. Illustrative dry-to-wet calibration maps 2.50–1.20 V to 0–100%. Calibrate for the actual soil.",
+    spec: "AOUT → GPIO4 / ADC1_CH4",
+    x: 112,
+    y: 385,
+    w: 65,
+    h: 165,
+    color: "#292e2c",
+  },
+  {
+    id: "B2",
+    name: "A window into the microclimate",
+    part: "AHT20 + BMP280 combo",
+    detail:
+      "Temperature ±0.3 °C, relative humidity ±2 %RH (AHT20, typical); barometric pressure ±1 hPa (BMP280, under specified conditions).",
+    spec: "I²C · AHT20 0x38 · BMP280 0x76 / 0x77",
+    x: 428,
+    y: 403,
+    w: 87,
+    h: 62,
+    color: "#785294",
+  },
+  {
+    id: "B3",
+    name: "Find the right light",
+    part: "BH1750 / GY-302",
+    detail:
+      "Digital ambient-light module, nominal 1–65,535 lx range. ADDR is tied to GND for the shared I²C address 0x23.",
+    spec: "GPIO6 SDA · GPIO7 SCL · ADDR → GND",
+    x: 403,
+    y: 81,
+    w: 86,
+    h: 62,
+    color: "#287aae",
+  },
+  {
+    id: "BT1",
+    name: "Power that travels with you",
+    part: "2S Li-ion battery pack",
+    detail:
+      "7.4 V nominal; 6.0–8.4 V operating range. Integrated 2S BMS protection is a project requirement; verify the physical pack before use.",
+    spec: "VIN_7V4 → U2 input · common GND",
+    x: 590,
+    y: 368,
+    w: 110,
+    h: 95,
+    color: "#355440",
+  },
+  {
+    id: "U2",
+    name: "One clean 3.3 V rail",
+    part: "DD4012SA buck converter",
+    detail:
+      "Fixed 3.3 V output from a 4.75–40 V input. The supplied schematic specifies DMM verification near +3.30 V before powering the electronics.",
+    spec: "Remove U1 V0 jumper · avoid USB / rail backfeed",
+    x: 594,
+    y: 181,
+    w: 100,
+    h: 70,
+    color: "#40733e",
+  },
+];
+export const nets = [
+  {
+    name: "VIN_7V4",
+    group: "power",
+    color: "#dc6357",
+    source: "BT1 +",
+    dest: "U2 VIN",
+    from: "BT1",
+    to: ["U2"],
+  },
+  {
+    name: "+3V3",
+    group: "power",
+    color: "#e48665",
+    source: "U2 VOUT",
+    dest: "U1 3V3; DS1 VCC; DS2 VCC; B1 VCC; B2 VDD; B3 VCC",
+    from: "U2",
+    to: ["U1", "DS1", "DS2", "B1", "B2", "B3"],
+  },
+  {
+    name: "GND",
+    group: "power",
+    color: "#67726b",
+    source: "BT1 − / U2 GND",
+    dest: "U1, DS1, DS2, B1, B2, B3 GND; B3 ADDR",
+    from: "U2",
+    to: ["BT1", "U1", "DS1", "DS2", "B1", "B2", "B3"],
+  },
+  {
+    name: "GPIO6 / SDA",
+    group: "i2c",
+    color: "#20b7c7",
+    source: "U1 GPIO6",
+    dest: "B2 SDA; B3 SDA; DS2 SDA",
+    from: "U1",
+    to: ["B2", "B3", "DS2"],
+  },
+  {
+    name: "GPIO7 / SCL",
+    group: "i2c",
+    color: "#548feb",
+    source: "U1 GPIO7",
+    dest: "B2 SCL; B3 SCL; DS2 SCL",
+    from: "U1",
+    to: ["B2", "B3", "DS2"],
+  },
+  {
+    name: "GPIO5 / SCK",
+    group: "spi",
+    color: "#a07be4",
+    source: "U1 GPIO5",
+    dest: "DS1 SCL (SPI clock)",
+    from: "U1",
+    to: ["DS1"],
+  },
+  {
+    name: "GPIO3 / MOSI",
+    group: "spi",
+    color: "#67b985",
+    source: "U1 GPIO3",
+    dest: "DS1 SDA (SPI data; not I²C)",
+    from: "U1",
+    to: ["DS1"],
+  },
+  {
+    name: "GPIO10 / CS",
+    group: "spi",
+    color: "#9971c4",
+    source: "U1 GPIO10",
+    dest: "DS1 CS",
+    from: "U1",
+    to: ["DS1"],
+  },
+  {
+    name: "GPIO1 / DC",
+    group: "spi",
+    color: "#bd86c4",
+    source: "U1 GPIO1",
+    dest: "DS1 DC",
+    from: "U1",
+    to: ["DS1"],
+  },
+  {
+    name: "GPIO0 / RST",
+    group: "spi",
+    color: "#4d987a",
+    source: "U1 GPIO0",
+    dest: "DS1 RST",
+    from: "U1",
+    to: ["DS1"],
+  },
+  {
+    name: "GPIO4 / ADC1_CH4",
+    group: "adc",
+    color: "#20a87c",
+    source: "B1 AOUT",
+    dest: "U1 GPIO4",
+    from: "B1",
+    to: ["U1"],
+  },
+];
+export const drawings = [
+  {
+    title: "Hardware schematic",
+    tab: "01 / Schematic",
+    image: "/images/schematic.svg",
+    download: "/images/schematic.svg",
+    desc: "Eight modules. Eleven nets. One thoughtfully connected system.",
+    meta: "KiCad-style project schematic · dual-screen architecture",
+    facts: ["8 real modules", "11 electrical nets", "Wire hop-over bridges"],
+    note: "Pin mapping is reproduced below. ERC status is a project-supplied claim; no source KiCad project was supplied for independent verification.",
+  },
+  {
+    title: "From idea to breadboard",
+    tab: "02 / Prototype",
+    image: "/images/prototype.png",
+    download: "/images/prototype.png",
+    desc: "The first physical arrangement, explored in a live 3D workspace.",
+    meta: "3D breadboard prototype · supplied studio capture",
+    facts: ["7 parts", "26 wires", "0 warnings"],
+    note: "The studio prototype has 7 parts; the final schematic documents 8 modules. Studio statistics are taken from the supplied project brief.",
+  },
+  {
+    title: "A board built around the plant",
+    tab: "03 / Carrier PCB",
+    image: "/images/pcb.png",
+    download: "/images/pcb.png",
+    desc: "A two-layer carrier brings the displays and sensing system together.",
+    meta: "80 × 105 mm · front-mounted display sockets",
+    facts: ["2 copper layers", "Every net routed", "DRC clean¹"],
+    note: "¹ Routing and DRC status are reported in the supplied project brief; manufacturing files and a DRC report were not supplied.",
+  },
+  {
+    title: "Engineering with a little character",
+    tab: "04 / Enclosure",
+    image: "/images/enclosure.png",
+    download: "/images/enclosure.png",
+    desc: "A compact head, two display windows, and a stake designed for the soil.",
+    meta: "102 × 212 × 61.8 mm · 13-part CAD assembly",
+    facts: ["Circular TFT window", "Rectangular OLED window", "BH1750 light slot"],
+    note: "CAD assembly shown as supplied. The screenshot indicates print preparation has not yet been completed; printability and fit are not independently verified.",
+  },
+];
+export const datasheets = [
+  [
+    "ESP32-C3",
+    "Espressif · chip datasheet",
+    "https://documentation.espressif.com/esp32-c3_datasheet_en.pdf",
+  ],
+  [
+    "ESP32-C3-MINI-1",
+    "Espressif · module reference¹",
+    "https://documentation.espressif.com/esp32-c3-mini-1_datasheet_en.pdf",
+  ],
+  [
+    "BMP280",
+    "Bosch Sensortec · datasheet",
+    "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp280-ds001.pdf",
+  ],
+  [
+    "AHT20",
+    "ASAIR / Aosong · datasheet",
+    "https://www.aosong.com/userfiles/files/media/Data%20Sheet%20AHT20.pdf",
+  ],
+  [
+    "BH1750FVI",
+    "ROHM datasheet · distributor mirror",
+    "https://www.mouser.com/datasheet/2/348/bh1750fvi-e-186247.pdf",
+  ],
+  [
+    "GY-302",
+    "Handson Technology · module guide²",
+    "https://www.handsontec.com/dataspecs/sensor/BH1750%20Light%20Sensor.pdf",
+  ],
+  [
+    "GC9A01",
+    "GalaxyCore datasheet · display-vendor mirror",
+    "https://www.buydisplay.com/download/ic/GC9A01A.pdf",
+  ],
+  [
+    "SSD1306",
+    "Solomon Systech datasheet · Adafruit mirror",
+    "https://cdn-shop.adafruit.com/datasheets/SSD1306.pdf",
+  ],
+  ["TLC555", "Texas Instruments · datasheet", "https://www.ti.com/lit/ds/symlink/tlc555.pdf"],
+];
+export const references = [
+  {
+    text: "S. Adla, N. K. Rai, S. H. Karumanchi, S. Tripathi, M. Disse, and S. Pande, “Laboratory Calibration and Performance Evaluation of Low-Cost Capacitive and Very Low-Cost Resistive Soil Moisture Sensors,” Sensors, vol. 20, no. 2, art. 363, 2020, doi: 10.3390/s20020363.",
+    url: "https://doi.org/10.3390/s20020363",
+    evidence:
+      "Published calibrated-sensor MAE: capacitive 1.90% vs. resistive 3.82% VWC; RMSE 2.62% vs. 5.38%. These are study results, not measurements of Gardening Buddy.",
+  },
+  {
+    text: "P. Placidi, L. Gasperini, A. Grassi, M. Cecconi, and A. Scorzoni, “Characterization of Low-Cost Capacitive Soil Moisture Sensors for IoT Networks,” Sensors, vol. 20, no. 12, art. 3585, 2020, doi: 10.3390/s20123585.",
+    url: "https://doi.org/10.3390/s20123585",
+    evidence:
+      "Reported r = −0.945 between probe output and gravimetric water content. The authors caution against assuming an ideal linear relationship. Author list expanded from the supplied citation using publisher metadata.",
+  },
+  {
+    text: "W. Nramat, P. Treemongkol, W. Traiphat, O. Thiabgoh, and E. Martwong, “IoT-Based Sensor Monitoring and Automated Irrigation Control for Sustainable Smallholder Vegetable Production: A Case Study,” Sustainability, vol. 18, no. 11, art. 5753, 2026, doi: 10.3390/su18115753.",
+    url: "https://doi.org/10.3390/su18115753",
+    evidence:
+      "Related ESP32 sensor-monitoring and threshold-based irrigation case study. Hardware-integration evidence supplied by the project team; not a validation of this prototype.",
+  },
+  {
+    text: "“Internet of Plants (IoP): An IoT-Based Platform for Environmental Monitoring,” IoT (MDPI), vol. 7, no. 3, art. 62, 2026, doi: 10.3390/iot7030062. [Online].",
+    url: "https://www.mdpi.com/2624-831x/7/3/62",
+    evidence:
+      "Publisher title continues “…and Phenological Analysis.” Related plant environmental-monitoring platform; supplied citation abbreviated.",
+  },
+  {
+    text: "“Care or Curiosity? Evaluating More-Than-Human Spatial Interactions in Shared Environments,” in Proc. ACM Symposium on Spatial User Interaction (SUI), 2026, doi: 10.1145/3822518.3830051.",
+    url: "https://doi.org/10.1145/3822518.3830051",
+    evidence:
+      "Related expressive “Talking Plant” interaction work. The team cites happy / neutral / sad threshold-based mood feedback; bibliographic record located, specific implementation claim not independently audited.",
+  },
+  {
+    text: "“From Decoration to Companion: Reframing Human-Houseplant Interaction with Gaia,” SN Computer Science, vol. 7, 2026, doi: 10.1007/s42979-026-05123-0.",
+    url: "https://doi.org/10.1007/s42979-026-05123-0",
+    evidence:
+      "Related expressive plant-care interface research. Improved understandability/actionability is the team’s supplied interpretation, not a quantified result reproduced here.",
+  },
+  {
+    text: "National Initiative for Agricultural Development (NIAD), “Forever Green (Dawman Khadra) National Tree-Planting Campaign,” Kingdom of Bahrain, 2021. [Online].",
+    url: "https://niadbh.com/forever-green/?lang=en",
+    evidence: "Local context: Bahrain’s national tree-planting campaign.",
+  },
+  {
+    text: "Ministry of Municipalities Affairs and Agriculture, “The National Afforestation Strategy aims to double the number of trees in Bahrain by 2035,” Government of Bahrain, 2025. [Online].",
+    url: "https://www.mun.gov.bh/newportal/en/municipal-affairs/projects/national-afforestation-strategy-aims-double-number-trees-bahrain-2035-0",
+    evidence:
+      "Official strategy: 1.8 million to approximately 3.6 million trees by 2035. Link uses the indexed government page.",
+  },
+  {
+    text: "Kingdom of Bahrain, “Zero Neutrality (2060 Net-Zero Commitment)” and “Bahrain Voluntary National Review Report 2026,” Sustainable Development Goals Unit, 2025–2026. [Online].",
+    url: "https://sdgs.gov.bh/PDFfiles/EN/Bahrain_VNR_report_2026.pdf",
+    evidence:
+      "2026 VNR URL retained as supplied; document availability and its water-strategy claims were not independently confirmed. The 2060 commitment is independently supported by Bahrain’s COP26 statement.",
+  },
+  {
+    text: "United Nations, “Transforming Our World: The 2030 Agenda for Sustainable Development,” A/RES/70/1, 2015. [Online].",
+    url: "https://sdgs.un.org/2030agenda",
+    evidence:
+      "Design alignment with SDGs 6, 11, 12, 13 and 15. Alignment does not establish measured environmental impact.",
+  },
+  {
+    text: "Official hardware component datasheets: Espressif Systems (ESP32-C3 and ESP32-C3-MINI-1), Bosch Sensortec (BMP280), ASAIR (AHT20), ROHM (BH1750FVI), GalaxyCore (GC9A01), Solomon Systech (SSD1306), and Texas Instruments (TLC555).",
+    url: "#datasheets",
+    evidence:
+      "Nine technical documents linked above, including the GY-302 supplier module guide. Manufacturer datasheets are distinguished from hosted mirrors and module guides.",
+  },
+];
+export const team = [
+  ["Bader Alrayes", "bader.alrayes.2026@uni.strath.ac.uk"],
+  ["Hamza Abdelhadi", "hamza.abdelhadi.2026@uni.strath.ac.uk"],
+  ["Ahmed Habib", "ahmed.habib.2026@uni.strath.ac.uk"],
+  ["Ahmed Younes", "ahmed.younes.2026@uni.strath.ac.uk"],
+];
