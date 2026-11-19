@@ -9,7 +9,6 @@ import {
   Plus,
   Minus,
   RotateCcw,
-  Maximize2,
   Check,
   ChevronDown,
   Move,
@@ -20,7 +19,16 @@ import {
   Wind,
 } from "lucide-react";
 import Hardware, { Face, Telemetry, defaultReadings, type Readings, type Mood } from "./hardware";
-import { modules, nets, drawings, datasheets, references } from "./project-data";
+import InteractiveSchematic from "./interactive-schematic";
+import {
+  modules,
+  nets,
+  drawings,
+  datasheets,
+  references,
+  orchidThresholds,
+  sdgItems,
+} from "./project-data";
 import { ComponentCards, ContactTeam } from "./core-deliverables";
 
 function SectionLabel({ number, children }: { number: string; children: React.ReactNode }) {
@@ -31,50 +39,97 @@ function SectionLabel({ number, children }: { number: string; children: React.Re
     </div>
   );
 }
+
+function ProblemHook() {
+  return (
+    <section className="problem-hook wrap" aria-label="Problem statement">
+      <div className="problem-hook-card">
+        <div className="problem-hook-copy">
+          <span className="problem-kicker">THE PROBLEM · WHY HOUSEPLANTS DIE</span>
+          <blockquote>
+            “60% of millennials said that what worries them most is ensuring plants get the proper
+            amount of sunlight. Other anxieties include watering (56% of respondents) and keeping
+            the plants alive (48%).”
+          </blockquote>
+          <a
+            className="problem-cite"
+            href="https://www.apartmenttherapy.com/dead-houseplants-average-37076429"
+            target="_blank"
+            rel="noreferrer"
+          >
+            — Del Castillo, I. (2022), Apartment Therapy <ArrowUpRight size={13} />
+          </a>
+        </div>
+        <div className="problem-stats">
+          <div>
+            <strong>60%</strong>
+            <span>Sunlight worry</span>
+          </div>
+          <div>
+            <strong>56%</strong>
+            <span>Watering anxiety</span>
+          </div>
+          <div>
+            <strong>48%</strong>
+            <span>Keeping alive</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Simulator() {
   const [values, setValues] = useState<Readings>(defaultReadings);
   const [plant, setPlant] = useState(0);
   const presets = [
     {
-      name: "Sweet basil",
-      tag: "Optimal",
-      values: defaultReadings,
+      name: "Orchid (Poster Profile)",
+      tag: "Optimal · 4/4",
+      values: { soil: 42, lux: 24000, temp: 24.0, humidity: 52 },
       ranges: [
-        [40, 80],
-        [8000, 20000],
-        [20, 30],
-        [40, 75],
-      ],
-    },
-    {
-      name: "Peace lily",
-      tag: "Low light",
-      values: { soil: 58, lux: 350, temp: 24, humidity: 62 },
-      ranges: [
-        [40, 75],
-        [1000, 10000],
-        [18, 30],
-        [40, 80],
-      ],
-    },
-    {
-      name: "Snake plant",
-      tag: "Dry soil alert",
-      values: { soil: 6, lux: 6500, temp: 26, humidity: 42 },
-      ranges: [
-        [15, 45],
-        [2000, 15000],
-        [18, 32],
         [25, 65],
+        [10000, 50000],
+        [19, 29],
+        [40, 60],
+      ],
+    },
+    {
+      name: "Orchid · Low Light",
+      tag: "Neutral · 2/4",
+      values: { soil: 45, lux: 3800, temp: 25.0, humidity: 32 },
+      ranges: [
+        [25, 65],
+        [10000, 50000],
+        [19, 29],
+        [40, 60],
+      ],
+    },
+    {
+      name: "Orchid · Dry Bark Alert",
+      tag: "Sad · 1/4",
+      values: { soil: 8, lux: 4200, temp: 33.0, humidity: 48 },
+      ranges: [
+        [25, 65],
+        [10000, 50000],
+        [19, 29],
+        [40, 60],
       ],
     },
   ];
   const keys = ["soil", "lux", "temp", "humidity"] as const;
+  const healthyCount = keys.filter(
+    (k, i) => values[k] >= presets[plant].ranges[i][0] && values[k] <= presets[plant].ranges[i][1],
+  ).length;
   const departures = keys.filter(
     (k, i) => values[k] < presets[plant].ranges[i][0] || values[k] > presets[plant].ranges[i][1],
   );
-  const severe = values.soil < 10 || values.temp > 36 || values.temp < 16 || departures.length >= 3;
-  const mood: Mood = severe ? "sad" : departures.length ? "neutral" : "happy";
+  const scorePct = Math.round((healthyCount / 4) * 100);
+  // Exact decision thresholds from Garden Buddy Program Flowchart (Figure 2):
+  // >= 75% Happy | 50-74% Neutral | 1-49% Sad | 0% Error
+  const mood: Mood =
+    scorePct >= 75 ? "happy" : scorePct >= 50 ? "neutral" : scorePct > 0 ? "sad" : "error";
+
   const settings = [
     {
       key: "soil" as const,
@@ -89,17 +144,17 @@ function Simulator() {
       key: "lux" as const,
       label: "Illuminance",
       min: 0,
-      max: 25000,
-      step: 50,
+      max: 55000,
+      step: 500,
       unit: " lx",
       icon: Sun,
     },
     {
       key: "temp" as const,
       label: "Temperature",
-      min: 15,
+      min: 12,
       max: 40,
-      step: 0.1,
+      step: 0.5,
       unit: " °C",
       icon: Thermometer,
     },
@@ -113,10 +168,11 @@ function Simulator() {
       icon: Wind,
     },
   ];
+
   return (
     <section id="simulator" className="simulator-section">
       <div className="wrap">
-        <SectionLabel number="02">THE DUAL-SCREEN EXPERIENCE</SectionLabel>
+        <SectionLabel number="02">SOFTWARE &amp; DUAL-SCREEN EXPERIENCE</SectionLabel>
         <div className="section-heading">
           <h2>
             Not just data.
@@ -124,37 +180,38 @@ function Simulator() {
             <span>A dialogue.</span>
           </h2>
           <p>
-            One display tells you how your plant feels.
+            Readings are scored out of 4 every 2 seconds—driving a facial
             <br />
-            The other tells you why. Try it for yourself.
+            expression on the round GC9A01 and live values on the 2.0″ ST7789.
           </p>
         </div>
+
         <div className="simulator">
           <div className="sim-display">
             <div className="live-tag">
-              <i /> INTERACTIVE SIMULATION
+              <i /> LIVE SCORE SIMULATION · {healthyCount}/4 ({scorePct}%)
             </div>
             <div className="display-plaque">
               <svg
-                viewBox="0 0 240 330"
-                aria-label={`Plant expression: ${mood}. Soil ${values.soil} percent; light ${values.lux} lux; temperature ${values.temp.toFixed(1)} Celsius; humidity ${values.humidity} percent.`}
+                viewBox="0 0 240 342"
+                aria-label={`Plant expression: ${mood}, score ${healthyCount} out of 4 (${scorePct} percent). Soil ${values.soil} percent; light ${values.lux} lux; temperature ${values.temp.toFixed(1)} Celsius; humidity ${values.humidity} percent.`}
               >
-                <circle cx="120" cy="103" r="80" fill="#0a1711" stroke="#4a6350" strokeWidth="2" />
-                <g transform="translate(60,43)">
+                <circle cx="120" cy="96" r="78" fill="#0a1711" stroke="#4a6350" strokeWidth="2" />
+                <g transform="translate(60,36)">
                   <Face mood={mood} />
                 </g>
                 <rect
-                  x="46"
-                  y="212"
-                  width="148"
-                  height="82"
-                  rx="4"
-                  fill="#071417"
-                  stroke="#41594a"
-                  strokeWidth="2"
+                  x="40"
+                  y="198"
+                  width="160"
+                  height="108"
+                  rx="6"
+                  fill="#071620"
+                  stroke="#3b5a70"
+                  strokeWidth="2.2"
                 />
-                <g transform="translate(55,218) scale(1.14)">
-                  <Telemetry values={values} adc />
+                <g transform="translate(49,206) scale(1.22)">
+                  <Telemetry values={values} score={healthyCount} adc />
                 </g>
               </svg>
               <div className="plaque-slot" />
@@ -162,19 +219,22 @@ function Simulator() {
             <div className={`mood-chip ${mood}`}>
               <i />
               {mood === "happy"
-                ? "Happy plant. Happy you."
+                ? `Happy (${scorePct}% · ≥75%)`
                 : mood === "neutral"
-                  ? "A little attention, please."
-                  : "Something needs your care."}
+                  ? `Neutral (${scorePct}% · 50–74%)`
+                  : mood === "sad"
+                    ? `Sad (${scorePct}% · 1–49%)`
+                    : "Error / Severe Stress (0%)"}
             </div>
             <p className="mood-reason" aria-live="polite">
               {departures.length
-                ? `${departures.map((k) => ({ soil: "Soil moisture", lux: "Light", temp: "Temperature", humidity: "Humidity" })[k]).join(", ")} outside the illustrative ${presets[plant].name.toLowerCase()} range.`
-                : "All four readings are within the illustrative target ranges."}
+                ? `${departures.map((k) => ({ soil: "Soil moisture", lux: "Light", temp: "Temperature", humidity: "Humidity" })[k]).join(", ")} outside the orchid reference band.`
+                : "All four parameters are within the preferred orchid growing thresholds."}
             </p>
           </div>
+
           <div className="sim-controls">
-            <p className="micro">CHOOSE YOUR PLANT</p>
+            <p className="micro">TEST PLANT CARE SCENARIO</p>
             <div className="presets">
               {presets.map((p, i) => (
                 <button
@@ -231,8 +291,8 @@ function Simulator() {
             </div>
             <div className="sim-foot">
               <span>
-                ADC {(2.5 - values.soil * 0.013).toFixed(2)} V{" "}
-                <span className="muted">/ GPIO4</span>
+                Soil ADC {(2.5 - values.soil * 0.013).toFixed(2)} V{" "}
+                <span className="muted">/ GPIO0 (ADC1_CH0)</span>
               </span>
               <button onClick={() => setValues(presets[plant].values)}>
                 <RotateCcw size={13} /> Reset readings
@@ -240,30 +300,71 @@ function Simulator() {
             </div>
           </div>
         </div>
+
+        {/* Software Flowchart & Orchid Preferred Thresholds matching Poster Section 3 */}
+        <div className="software-flowchart-panel">
+          <div className="sfp-text">
+            <span className="sfp-kicker">HOW IT WORKS — SOFTWARE &amp; FIRMWARE LOOP</span>
+            <h3>Program Flowchart &amp; Orchid Care Thresholds</h3>
+            <p>
+              Readings are taken from sensors (moisture, humidity, temperature, and light) every 2
+              seconds, then processed as either “healthy” or “unhealthy” depending on how far off
+              they are from the plant’s preferred levels. The amount of healthy readings determines
+              the plant’s score out of 4—displayed on the 2.0″ rectangular ST7789 screen while the
+              1.28″ round GC9A01 screen draws a Happy (≥75%), Neutral (50–74%), Sad (1–49%), or
+              Error (0%) face (Talking Plant Project, 2026). Daily scheduled sampling can also be
+              enabled to save battery power.
+            </p>
+
+            <div className="orchid-thresh-box">
+              <strong>PREFERRED PLANT THRESHOLDS (ORCHID REFERENCE PROFILE)</strong>
+              <div className="orchid-thresh-grid">
+                {orchidThresholds.map((t) => (
+                  <div className="orchid-thresh-row" key={t.param}>
+                    <span className="ot-param">{t.param}</span>
+                    <code className="ot-range">{t.range}</code>
+                    <span className="ot-note">
+                      {t.note}{" "}
+                      <a href={t.url} target="_blank" rel="noreferrer">
+                        ({t.citation})
+                      </a>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <figure className="sfp-figure">
+            <img
+              src="/images/program-flowchart.png"
+              alt="Garden Buddy program flowchart showing 2-second loop, validity check, 0-100% health score, and face classification"
+              loading="lazy"
+            />
+            <figcaption>
+              Figure 2. Garden Buddy firmware flowchart paired with calibrated orchid growing
+              thresholds (Orchid Web, n.d.; American Orchid Society, n.d.).
+            </figcaption>
+          </figure>
+        </div>
+
         <details className="logic-note">
           <summary>
-            How the demo makes a decision <ChevronDown size={15} />
+            How the scoring thresholds map to facial expressions <ChevronDown size={15} />
           </summary>
           <p>
-            Happy: all readings inside the selected plant’s illustrative ranges. Neutral: one or two
-            departures. Sad: three or more departures, soil below 10%, or temperature outside 16–36
-            °C. Pressure is held at 1013 hPa. Soil voltage is a linear illustrative mapping: V =
-            2.50 − 0.013 × moisture %. These are demo rules, not verified firmware, agronomic advice
-            or an actual hardware stream. Plant-care mood feedback is motivated by related
-            interaction research [5], [6]; monitoring architecture by [3], [4].
-          </p>
-          <p>
-            {presets[plant].name} targets:{" "}
-            {presets[plant].ranges
-              .map((r, i) => `${settings[i].label} ${r[0]}–${r[1]}${settings[i].unit}`)
-              .join(" · ")}
-            .
+            Each of the four measured parameters (soil moisture, illuminance, air temperature, and
+            relative humidity) is compared against the preferred plant range. 3–4 healthy metrics
+            (≥75%) display Happy; 2 healthy metrics (50–74%) display Neutral; 1 healthy metric
+            (1–49%) displays Sad; 0 healthy metrics or an invalid sensor reading displays the Error
+            state. Reference ranges follow Orchid Web (n.d.) and American Orchid Society (n.d.).
           </p>
         </details>
       </div>
     </section>
   );
 }
+
 function Lightbox({
   image,
   title,
@@ -371,120 +472,105 @@ function Lightbox({
     </dialog>
   );
 }
+
 function Gallery() {
   const [open, setOpen] = useState(false);
   const item = drawings[0];
   return (
     <section className="gallery-section wrap" id="engineering">
-      <SectionLabel number="03">E1110 / CORE ENGINEERING DELIVERABLES</SectionLabel>
+      <SectionLabel number="03">E1110 / INTERACTIVE HARDWARE &amp; SCHEMATIC</SectionLabel>
       <div className="section-heading">
         <h2>
-          Engineering
-          <br />& Schematic.
+          Interactive Circuit
+          <br />&amp; Schematic.
         </h2>
         <p>
-          Inspect the full vector schematic, trace all eleven nets,
+          Hover over any of the 9 physical modules or 14 electrical wires to inspect
           <br />
-          and explore the eight real hardware modules.
+          live current flow, toggle power switch SW1, and trace every GPIO pin.
         </p>
       </div>
+
+      <p className="hardware-narrative">
+        Garden Buddy uses four 1.5 V AA batteries (6 V) through a power switch (SW1) and DD4012SA
+        voltage regulator to supply all sensors and both screens with a stable, constant 3.3 V
+        output. The sensors measure temperature and humidity (AHT20+BMP280), light (BH1750 /
+        GY-302), and soil moisture (Capacitive Soil Moisture Sensor v2.0; Placidi et al., 2020),
+        transmitting all readings to the ESP32-C3 microcontroller (USB-C powered, shared common
+        ground)—the brain of the device—which displays live values alongside a matching facial
+        expression.
+      </p>
+
       <div id="schematic-viewer">
-        <div className="drawing-stage">
-          <button
-            className="drawing-image"
-            onClick={() => setOpen(true)}
-            aria-label={`Enlarge ${item.title}`}
-          >
-            <img src={item.image} alt={item.title} loading="lazy" />
-          </button>
-          <button className="zoom-button" onClick={() => setOpen(true)}>
-            <Maximize2 size={15} /> Explore drawing
-          </button>
-          <span className="drawing-format">KICAD 10 HARDWARE SCHEMATIC / VECTOR SVG</span>
-        </div>
-        <div className="drawing-info">
-          <div>
-            <h3>{item.title}</h3>
-            <p>{item.desc}</p>
-            <small>{item.meta}</small>
-          </div>
-          <div className="drawing-facts">
-            {item.facts.map((f) => (
-              <span key={f}>
-                <Check size={13} />
-                {f}
-              </span>
-            ))}
-            <a href={item.download} download>
-              Download original <ArrowDown size={13} />
-            </a>
-          </div>
-        </div>
-        <p className="verification-note">{item.note}</p>
+        <InteractiveSchematic onOpenLightbox={() => setOpen(true)} />
       </div>
+
       <NetTable />
       <ComponentCards />
       {open && <Lightbox image={item.image} title={item.title} onClose={() => setOpen(false)} />}
     </section>
   );
 }
+
 function Architecture() {
   return (
     <section id="architecture" className="architecture wrap">
-      <SectionLabel number="01">SMALL SYSTEM. SMART CONNECTIONS.</SectionLabel>
+      <SectionLabel number="01">INTRODUCTION · WHAT IS GARDEN BUDDY?</SectionLabel>
       <div className="section-heading">
         <h2>
-          Eight modules.
+          Nine modules.
           <br />
           Working as one.
         </h2>
         <p>
-          A single ESP32-C3 coordinates three sensors,
-          <br />
-          two displays, and a protected power stage.
+          The Garden Buddy is a smart monitoring device designed to make it easier to keep your
+          plants alive (Gaia Project, 2026). Your plant tells you what is wrong and what it
+          needs—simply stick it in the soil and tend to its needs with zero guesswork.
         </p>
       </div>
       <div className="architecture-strip">
         <div>
           <Cpu size={23} />
-          <strong>160 MHz</strong>
-          <span>32-bit RISC-V controller</span>
+          <strong>ESP32-C3</strong>
+          <span>USB-C 5 V MCU · common GND</span>
         </div>
         <div>
-          <span className="number-icon">3.3</span>
-          <strong>One regulated rail</strong>
-          <span>2S battery → DD4012SA</span>
+          <span className="number-icon">3.3V</span>
+          <strong>Isolated peripheral rail</strong>
+          <span>4×AA (6 V) → SW1 → DD4012SA</span>
         </div>
         <div>
-          <span className="number-icon">I²C</span>
-          <strong>100 kHz</strong>
-          <span>Four addresses, two signal nets</span>
+          <span className="number-icon">2×TFT</span>
+          <strong>Shared SPI displays</strong>
+          <span>1.28″ GC9A01 + 2.0″ ST7789</span>
         </div>
         <div>
-          <span className="number-icon">11</span>
-          <strong>Purposeful connections</strong>
-          <span>Power, I²C, SPI & analog</span>
+          <span className="number-icon">14</span>
+          <strong>0-ERC verified nets</strong>
+          <span>Power, I²C (GPIO2/9), SPI &amp; ADC</span>
         </div>
       </div>
     </section>
   );
 }
+
 function NetTable() {
   const [filter, setFilter] = useState("all");
   return (
     <section className="engineering-nets" aria-labelledby="net-table-title">
-      <h3 id="net-table-title">11-Net GPIO Pinout & Bus Architecture</h3>
+      <h3 id="net-table-title">14-Net GPIO Pinout &amp; Bus Architecture</h3>
       <p className="engineering-lead">
-        Named source and destination pins, reproduced from the project schematic.
+        Exact source-to-destination connections verified with 0 ERC errors and 0 ERC warnings in KiCad
+        10.
       </p>
       <div className="table-inner">
         <div className="bus-controls">
           {[
-            ["all", "All nets (11)"],
-            ["power", "Power Rail · VIN_7V4 / +3V3 / GND"],
-            ["i2c", "100 kHz I²C · GPIO6/7"],
-            ["spi", "High-Speed SPI · GPIO5/3/10/1/0"],
-            ["adc", "Soil ADC · GPIO4"],
+            ["all", "All nets (14)"],
+            ["power", "Power · BAT_6V / SW_6V / +3V3 / GND"],
+            ["i2c", "Shared I²C · GPIO2 / GPIO9"],
+            ["spi", "Dual SPI · GPIO4/5/10/6/7/1/3"],
+            ["adc", "Soil ADC · GPIO0"],
           ].map(([id, label]) => (
             <button
               key={id}
@@ -497,192 +583,266 @@ function NetTable() {
           ))}
         </div>
         <div className="table-scroll">
-          <table aria-label="11-Net GPIO pin-to-pin wiring table">
+          <table aria-label="14-Net GPIO pin-to-pin wiring table">
             <thead>
               <tr>
                 <th>NET</th>
                 <th>SOURCE PIN</th>
                 <th>DESTINATION PINS</th>
+                <th>SIGNAL / ROLE</th>
               </tr>
             </thead>
             <tbody>
               {nets
                 .filter((n) => filter === "all" || filter === n.group)
                 .map((n) => (
-                  <tr key={n.name}>
+                  <tr key={n.id}>
                     <td>
                       <i style={{ background: n.color }} />
                       {n.name}
                     </td>
                     <td>{n.source}</td>
                     <td>{n.dest}</td>
+                    <td>{n.protocol}</td>
                   </tr>
                 ))}
             </tbody>
           </table>
         </div>
         <p className="verification-note">
-          I²C addresses: AHT20 0x38 · BMP280 0x76/0x77 · BH1750 0x23 · SSD1306 0x3C. Verify
-          effective SDA/SCL pull-ups to 3.3 V (schematic: 1.6–10 kΩ). DS1 SCL/SDA labels refer to
-          SPI, not I²C. Remove the U1 V0 jumper as specified in the project schematic; do not power
-          via USB and external rail simultaneously without verifying isolation.
+          Power Isolation: 4×AA (6.0 V) → SW1 → DD4012SA (+3V3) powers B1, B2, B3, DS1, and DS2
+          (VCC + BLK) ONLY—never tied to ESP32-C3 (U1), which runs via USB-C 5 V with a unified
+          common GND across all 9 modules. Shared I²C addresses: AHT20 0x38 · BMP280 0x76/0x77 ·
+          BH1750 0x23 (ADDR → GND).
         </p>
       </div>
-      <p className="verification-note">
-        SPI is a dedicated display bus; a specific configured SPI clock rate is not established by
-        the supplied schematic.
-      </p>
     </section>
   );
 }
+
+function ResultsAndFuture() {
+  return (
+    <section className="results-future-section wrap" id="results">
+      <SectionLabel number="04">RESULTS, REAL-WORLD REVIEW &amp; FUTURE WORK</SectionLabel>
+      <div className="section-heading">
+        <h2>
+          Tested on real plants.
+          <br />
+          <span>Built to grow further.</span>
+        </h2>
+        <p>
+          Hands-on plant care testing by team member Hamza Majed validated how glanceable faces and
+          live readings remove daily guesswork (IoP, 2026; Nramat et al., 2026).
+        </p>
+      </div>
+
+      <div className="results-future-grid">
+        {/* Left: Hamza's Google Review + 3-Step Real Use Loop */}
+        <div className="rf-card">
+          <span className="rf-kicker">RESULTS &amp; PLANT CARE VALIDATION</span>
+          <h3>Real-World Hands-On User Review</h3>
+          <figure className="hamza-review-figure">
+            <img
+              src="/images/hamza-review.png"
+              alt="5-star hands-on user review from team member Hamza Majed describing how Garden Buddy simplified daily plant care"
+              loading="lazy"
+            />
+            <figcaption>
+              Figure 3. Hands-on user experience review from team member Hamza Majed after using
+              Garden Buddy to monitor and care for his plant in daily life.
+            </figcaption>
+          </figure>
+          <div className="care-steps">
+            <div>
+              <span>STEP 01 · GLANCE</span>
+              <strong>Check the Face</strong>
+              <p>Round GC9A01 face alerts you in &lt; 2 s if the plant feels stressed.</p>
+            </div>
+            <div>
+              <span>STEP 02 · INSPECT</span>
+              <strong>Look Down at Data</strong>
+              <p>2.0″ ST7789 reveals whether water or light is outside target range.</p>
+            </div>
+            <div>
+              <span>STEP 03 · CARE</span>
+              <strong>Act With Confidence</strong>
+              <p>Tend to the exact need—removing daily guessing and overwatering.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Conclusion & Future Improvements + Analog pH Sensor Figure 4 */}
+        <div className="rf-card">
+          <span className="rf-kicker">CONCLUSION &amp; FUTURE IMPROVEMENTS</span>
+          <h3>Making Plant Care Accessible to Everyone</h3>
+          <p className="rf-prose">
+            In conclusion, Garden Buddy is a useful device that makes planting more accessible and
+            eases taking care of plants. To improve it, we can add pH sensors to track nutrient
+            balance and program the device to guide users on what to do when readings are too high
+            or low. Whether you are new to planting or experienced, Garden Buddy helps monitor your
+            plants on a busy schedule and guides you through the process even without prior
+            knowledge.
+          </p>
+
+          <div className="future-split">
+            <div className="future-list">
+              <div>
+                <span>IMPROVEMENT 1 · SOIL pH &amp; NUTRIENTS</span>
+                <p>
+                  Integrate an analog pH probe (Figure 4) to track soil acidity and nutrient uptake.
+                </p>
+              </div>
+              <div>
+                <span>IMPROVEMENT 2 · ACTIONABLE GUIDANCE</span>
+                <p>
+                  Display step-by-step on-screen prompts explaining how to correct high or low
+                  readings.
+                </p>
+              </div>
+              <div>
+                <span>IMPROVEMENT 3 · DAILY SLEEP &amp; SEALING</span>
+                <p>
+                  Add deep-sleep daily scheduling and weather-sealed housing for outdoor deployment.
+                </p>
+              </div>
+            </div>
+
+            <figure className="ph-figure">
+              <span>FUTURE HARDWARE ADD-ON · ANALOG pH PROBE</span>
+              <img
+                src="/images/parts/future-ph-sensor.png"
+                alt="Gravity Analog pH sensor module and BNC electrode probe planned for future soil nutrient balance monitoring"
+                loading="lazy"
+              />
+              <figcaption>
+                Figure 4. Gravity Analog pH sensor module and BNC electrode planned for future soil
+                nutrient balance monitoring.
+              </figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Sustainability() {
   return (
     <section className="sustainability" id="impact">
       <div className="wrap">
-        <SectionLabel number="04">ROOTED IN A GREENER BAHRAIN</SectionLabel>
+        <SectionLabel number="05">BAHRAIN VISION, GO-GREEN &amp; UN SDGS</SectionLabel>
         <div className="impact-layout">
           <div>
             <h2>
               A small companion.
               <br />
-              <span>A greener tomorrow.</span>
+              <span>A greener Bahrain.</span>
             </h2>
             <p>
-              Better plant care starts with understanding. Gardening Buddy makes the invisible
-              visible—encouraging thoughtful watering and more confident everyday care.
+              What deters novices from planting is the guesswork of daily care. Accommodating
+              beginners and children to gardening through facial feedback, Garden Buddy lets users
+              absorbed with busy schedules grow plants without managing complex details. Its real
+              soil moisture readings also stop blind watering—saving scarce desalinated water across
+              households and schools.
             </p>
-            <a
-              className="text-link"
-              href="https://niadbh.com/forever-green/?lang=en"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Explore Bahrain’s Forever Green initiative <ArrowUpRight size={17} />
-            </a>
-            <p className="impact-disclaimer">
-              An educational contribution, not an official NIAD partnership. Water savings and
-              environmental outcomes have not been measured.
-            </p>
-          </div>
-          <div className="impact-numbers">
-            <div>
-              <span>NATIONAL AFFORESTATION STRATEGY [8]</span>
-              <strong>
-                1.8M <ArrowRight size={29} /> 3.6M
-              </strong>
-              <p>Target number of trees in Bahrain by 2035</p>
-            </div>
-            <div>
-              <span>BAHRAIN’S CLIMATE COMMITMENT [9]</span>
-              <strong>Net zero. 2060.</strong>
-              <p>A long-term commitment to a more resilient future</p>
+            <div className="impact-links">
               <a
-                href="https://unfccc.int/sites/default/files/resource/BAHRAIN_cop26cmp16cma3_HLS_EN.pdf"
+                className="text-link"
+                href="https://sdgs.gov.bh"
                 target="_blank"
                 rel="noreferrer"
               >
-                Official COP26 statement <ArrowUpRight size={12} />
+                Explore Bahrain SDGs Portal (sdgs.gov.bh) <ArrowUpRight size={17} />
+              </a>
+              <a
+                className="text-link"
+                href="https://niadbh.com/forever-green/?lang=en"
+                target="_blank"
+                rel="noreferrer"
+              >
+                NIAD Forever Green Campaign <ArrowUpRight size={17} />
+              </a>
+            </div>
+          </div>
+          <div className="impact-numbers">
+            <div>
+              <span>NATIONAL AFFORESTATION STRATEGY 2035</span>
+              <strong>
+                1.8M <ArrowRight size={29} /> 3.6M
+              </strong>
+              <p>Target number of trees in Bahrain by 2035 (NIAD &amp; Ministry of Municipalities)</p>
+            </div>
+            <div>
+              <span>BAHRAIN’S CLIMATE &amp; WATER STRATEGY</span>
+              <strong>Net-Zero 2060</strong>
+              <p>
+                Directly linked with Bahrain’s National Water Strategy 2030, Net-Zero 2060, and VNR
+                Report
+              </p>
+              <a href="https://sdgs.gov.bh" target="_blank" rel="noreferrer">
+                Kingdom of Bahrain SDGs Portal <ArrowUpRight size={12} />
               </a>
             </div>
           </div>
         </div>
-        <div className="sdgs">
-          {[
-            [6, "Clean water", "Informed watering", "#21a8d1"],
-            [11, "Sustainable cities", "Greener living spaces", "#e79e38"],
-            [12, "Responsible consumption", "Care with intention", "#b69642"],
-            [13, "Climate action", "Everyday climate awareness", "#527b46"],
-            [15, "Life on land", "Support plant wellbeing", "#67a74a"],
-          ].map(([n, title, desc, color]) => (
-            <a href={`https://sdgs.un.org/goals/goal${n}`} key={n} target="_blank" rel="noreferrer">
-              <span className="sdg-number" style={{ background: String(color) }}>
-                {n}
-              </span>
-              <div>
-                <strong>{title}</strong>
-                <small>{desc}</small>
+
+        {/* Official UN/Bahrain SDG Icon Boxes directly from the Submitted Poster */}
+        <div className="poster-sdg-grid">
+          {sdgItems.map((sdg) => (
+            <a
+              href={sdg.url}
+              key={sdg.num}
+              target="_blank"
+              rel="noreferrer"
+              className="poster-sdg-card"
+            >
+              <img
+                src={sdg.img}
+                alt={`UN Sustainable Development Goal ${sdg.num}: ${sdg.title}`}
+                loading="lazy"
+              />
+              <div className="poster-sdg-meta">
+                <strong>
+                  SDG {sdg.num} · {sdg.title}
+                </strong>
+                <small>{sdg.desc}</small>
               </div>
-              <ArrowUpRight size={15} />
+              <ArrowUpRight size={15} className="poster-sdg-arrow" />
             </a>
           ))}
         </div>
+
         <p className="verification-note">
-          Aligned with the intentions of UN Sustainable Development Goals 6, 11, 12, 13 and 15 [10].
-          Forever Green campaign context [7]; national afforestation targets [8].
+          Aligned with UN Sustainable Development Goals 6, 11, 12, 13, and 15 (United Nations, 2015)
+          and the Kingdom of Bahrain’s National Water Strategy 2030, Net-Zero 2060, Forever Green
+          (NIAD, 2021), and 2035 Afforestation targets (sdgs.gov.bh).
         </p>
       </div>
     </section>
   );
 }
-function Evidence() {
-  return (
-    <section className="evidence wrap">
-      <div>
-        <SectionLabel number="↗">DESIGNED ON EVIDENCE</SectionLabel>
-        <h2>
-          Sense smarter.
-          <br />
-          Care better.
-        </h2>
-        <p>
-          Capacitive sensing measures changes in soil dielectric properties instead of
-          exposed-electrode resistance. Calibration matters: every soil has its own story.
-        </p>
-      </div>
-      <div className="evidence-stats">
-        <article>
-          <span>CALIBRATED SOIL SENSOR STUDY [1]</span>
-          <h3>
-            ~2× <small>lower error</small>
-          </h3>
-          <p>
-            MAE: <strong>1.90% capacitive</strong> vs. 3.82% resistive VWC.
-            <br />
-            RMSE: 2.62% vs. 5.38%.
-          </p>
-          <a href="#ref-1">
-            Read the source <ArrowUpRight size={13} />
-          </a>
-        </article>
-        <article>
-          <span>PROBE CHARACTERIZATION [2]</span>
-          <h3>
-            −0.945 <small>correlation</small>
-          </h3>
-          <p>
-            Output voltage vs. gravimetric water content. A strong negative relationship—not proof
-            that every soil follows a linear calibration.
-          </p>
-          <a href="#ref-2">
-            Read the source <ArrowUpRight size={13} />
-          </a>
-        </article>
-        <p className="verification-note">
-          Published research results, not measured accuracy of this project. The simulator uses a
-          simplified linear voltage mapping for demonstration only.
-        </p>
-      </div>
-    </section>
-  );
-}
+
 function References() {
-  const [view, setView] = useState("all");
+  const [view, setView] = useState<"all" | "care" | "research" | "policy" | "ai">("all");
+  const visibleRefs = references.filter((r) => view === "all" || r.category === view);
+
   return (
     <section className="references wrap" id="references">
-      <SectionLabel number="04">E1110 / ACADEMIC & HARDWARE SOURCES</SectionLabel>
+      <SectionLabel number="06">E1110 / HARVARD REFERENCES &amp; HARDWARE DATASHEETS</SectionLabel>
       <div className="section-heading">
         <h2>
           References
-          <br />& Datasheets.
+          <br />&amp; Datasheets.
         </h2>
         <p>
-          Explore the component documentation
+          All hardware component datasheets preserved alongside the complete
           <br />
-          and the literature behind the project.
+          14-entry Harvard bibliography matching our submitted E1110 poster.
         </p>
       </div>
+
       <h3 className="subheading" id="datasheets">
-        Hardware documentation <span>09 DOCUMENTS / [11]</span>
+        Hardware documentation <span>{datasheets.length} DOCUMENTS</span>
       </h3>
       <div className="datasheet-grid">
         {datasheets.map(([name, desc, url]) => (
@@ -696,20 +856,25 @@ function References() {
         ))}
       </div>
       <p className="verification-note">
-        ¹ ESP32-C3-MINI-1 is a related Espressif module reference, not the SuperMini board fitted
-        here. ² GY-302 is a generic breakout designation: this is a supplier guide, not an
-        independently verified OEM datasheet. Vendor mirrors are explicitly labeled.
+        ¹ ESP32-C3-MINI-1 is a related Espressif module reference alongside the ESP32-C3 chip
+        datasheet. ² GY-302 is a supplier module guide for the ROHM BH1750FVI sensor. ST7789V
+        documents the 2.0″ GMT020-02-8P display driver; SSD1306 is retained from early prototyping.
       </p>
+
       <div className="bibliography-head">
         <h3>
-          Project bibliography <span>IEEE-STYLE / 11 ENTRIES</span>
+          Project bibliography <span>HARVARD STYLE / {references.length} ENTRIES</span>
         </h3>
         <div className="reference-filters">
-          {[
-            ["all", "All"],
-            ["research", "Research"],
-            ["context", "Policy & hardware"],
-          ].map(([id, label]) => (
+          {(
+            [
+              ["all", `All (${references.length})`],
+              ["care", "Plant Care & Hook"],
+              ["research", "Sensors & UX Research"],
+              ["policy", "Bahrain & UN SDGs"],
+              ["ai", "AI Consultation"],
+            ] as const
+          ).map(([id, label]) => (
             <button
               key={id}
               className={view === id ? "active" : ""}
@@ -721,39 +886,34 @@ function References() {
           ))}
         </div>
       </div>
+
       <div className="bibliography">
-        {references.map(
-          (ref, i) =>
-            (view === "all" || (view === "research" ? i < 6 : i >= 6)) && (
-              <details key={ref.text} id={`ref-${i + 1}`} open>
-                <summary>
-                  <span className="ref-number">[{i + 1}]</span>
-                  <span>{ref.text}</span>
-                  <Plus size={16} />
-                </summary>
-                <div className="reference-detail">
-                  <p>{ref.evidence}</p>
-                  <a
-                    href={ref.url}
-                    target={ref.url.startsWith("#") ? undefined : "_blank"}
-                    rel="noreferrer"
-                  >
-                    {ref.url.startsWith("#") ? "View documentation" : "Open source"}{" "}
-                    <ArrowUpRight size={14} />
-                  </a>
-                </div>
-              </details>
-            ),
-        )}
+        {visibleRefs.map((ref, i) => (
+          <details key={ref.text} id={`ref-${i + 1}`} open>
+            <summary>
+              <span className="ref-number">{ref.shortCite}</span>
+              <span>{ref.text}</span>
+              <Plus size={16} />
+            </summary>
+            <div className="reference-detail">
+              <p>
+                <strong>How we utilized this source:</strong> {ref.utilization}
+              </p>
+              <a href={ref.url} target="_blank" rel="noreferrer">
+                Open source <ArrowUpRight size={14} />
+              </a>
+            </div>
+          </details>
+        ))}
       </div>
       <p className="verification-note">
-        References supplied by the project team; bibliographic records and selected evidence checked
-        against indexed publisher/government sources. Entries with unconfirmed specific claims are
-        qualified above. External document availability can change.
+        Full Harvard-style reference list synced directly with the submitted E1110 Garden Buddy A1
+        poster and project references logbook.
       </p>
     </section>
   );
 }
+
 function Footer() {
   return (
     <footer>
@@ -766,22 +926,26 @@ function Footer() {
           <p>
             Faculty of Science
             <br />
-            Department of Electronic & Electrical Engineering
+            Department of Electronic &amp; Electrical Engineering
             <br />
-            <small>With thanks to the E1110 Electronics teaching staff.</small>
+            <small>
+              E1110 Electronics teaching and laboratory staff, University of Strathclyde Bahrain —
+              for bench facilities, metrology guidance, and feedback.
+            </small>
           </p>
         </div>
         <div className="footer-bottom">
           <a href="#hardware" className="brand">
-            <Leaf size={19} /> Gardening Buddy<span>™</span>
+            <Leaf size={19} /> Garden Buddy<span>™</span>
           </a>
-          <span>SMART DUAL-SCREEN EMBEDDED PLANT MONITORING SYSTEM</span>
+          <span>SINGLE-NODE ESP32-C3 DUAL-TFT PLANT MONITORING SYSTEM</span>
           <a href="#hardware">Back to the top ↑</a>
         </div>
       </div>
     </footer>
   );
 }
+
 export default function Showcase() {
   const hero = useRef<HTMLElement>(null);
   const [progress, setProgress] = useState(0);
@@ -789,8 +953,9 @@ export default function Showcase() {
   const [filter, setFilter] = useState("all");
   const [selected, setSelected] = useState<string | null>(null);
   const [menu, setMenu] = useState(false);
+
   useEffect(() => {
-    document.title = "Gardening Buddy — Strathclyde Bahrain E1110";
+    document.title = "Garden Buddy — Strathclyde Bahrain E1110";
     let frame = 0;
     const update = () => {
       if (frame) return;
@@ -828,13 +993,15 @@ export default function Showcase() {
       window.removeEventListener("resize", update);
     };
   }, []);
+
   const p = override ?? progress;
   const phase = p < 0.2 ? 0 : p < 0.72 ? 1 : 2;
   const component = modules.find((m) => m.id === selected);
+
   return (
     <>
-      <a className="skip-link" href="#simulator">
-        Skip to interactive simulator
+      <a className="skip-link" href="#engineering">
+        Skip to interactive circuit schematic
       </a>
       <header className="site-header">
         <div className="nav-wrap">
@@ -842,15 +1009,17 @@ export default function Showcase() {
             <span className="brand-icon">
               <Leaf size={19} />
             </span>
-            Gardening Buddy<span className="brand-tm">™</span>
+            Garden Buddy<span className="brand-tm">™</span>
           </a>
           <nav className={menu ? "open" : ""} aria-label="Main navigation">
             {[
-              ["#architecture", "The System"],
-              ["#simulator", "Simulator"],
-              ["#engineering", "Engineering & Schematic"],
-              ["#references", "References & Datasheets"],
-              ["#team", "Contact Team"],
+              ["#architecture", "Overview"],
+              ["#simulator", "Software & Demo"],
+              ["#engineering", "Interactive Circuit"],
+              ["#results", "Results & Future"],
+              ["#impact", "Bahrain & SDGs"],
+              ["#references", "References"],
+              ["#team", "Team"],
             ].map(([url, text]) => (
               <a key={url} href={url} onClick={() => setMenu(false)}>
                 {text}
@@ -874,23 +1043,27 @@ export default function Showcase() {
           </button>
         </div>
       </header>
+
       <main>
         <section className="hero-scroll" ref={hero} id="hardware">
           <div className="hero-sticky">
             <div className="hero-grid wrap">
               <div className="hero-copy">
                 <div className="project-tag">
-                  <i /> STRATHCLYDE BAHRAIN <span>/</span> E1110
+                  <i /> STRATHCLYDE BAHRAIN <span>/</span> E1110 DUAL-TFT SYSTEM
                 </div>
                 <div className="deliverable-shortcuts" aria-label="Core project deliverables">
                   <a href="#engineering">
-                    Schematic <ArrowUpRight size={11} />
+                    Interactive Circuit <ArrowUpRight size={11} />
+                  </a>
+                  <a href="#results">
+                    User Review <ArrowUpRight size={11} />
+                  </a>
+                  <a href="#impact">
+                    UN SDGs <ArrowUpRight size={11} />
                   </a>
                   <a href="#references">
                     References <ArrowUpRight size={11} />
-                  </a>
-                  <a href="#team">
-                    Team emails <ArrowUpRight size={11} />
                   </a>
                 </div>
                 <div className="hero-phase" key={phase}>
@@ -901,8 +1074,8 @@ export default function Showcase() {
                         <br />A lot of <span>life.</span>
                       </h1>
                       <p>
-                        Meet Gardening Buddy. The smart plant companion that turns everyday readings
-                        into a little understanding.
+                        Meet Garden Buddy. The standalone smart monitor where your plant tells you
+                        what is wrong and what it needs—no app and no guesswork.
                       </p>
                     </>
                   ) : phase === 1 ? (
@@ -913,8 +1086,8 @@ export default function Showcase() {
                         <span>Brilliant inside.</span>
                       </h1>
                       <p>
-                        Scroll deeper. Eight carefully chosen modules come apart to reveal the
-                        engineering behind your plant’s personality.
+                        Scroll deeper. Nine real hardware modules—from 4×AA + switch + 3.3 V buck to
+                        dual SPI TFT screens—come apart to reveal the build.
                       </p>
                     </>
                   ) : (
@@ -925,15 +1098,15 @@ export default function Showcase() {
                         <span>connected.</span>
                       </h1>
                       <p>
-                        Eleven electrical nets. One shared purpose. Follow the power, sensing and
-                        display signals that bring your buddy to life.
+                        Fourteen verified KiCad nets. Zero ERC errors. Follow the power, I²C, analog
+                        moisture, and dual-SPI display paths.
                       </p>
                     </>
                   )}
                 </div>
                 <div className="hero-actions">
-                  <a className="primary-button" href="#simulator">
-                    Try the simulator <ArrowUpRight size={16} />
+                  <a className="primary-button" href="#engineering">
+                    Explore interactive circuit <ArrowUpRight size={16} />
                   </a>
                   <button
                     className="secondary-button"
@@ -942,19 +1115,19 @@ export default function Showcase() {
                       setSelected(null);
                     }}
                   >
-                    {p > 0.3 ? "Reassemble" : "Explore the hardware"} <Plus size={15} />
+                    {p > 0.3 ? "Reassemble" : "Explode hardware"} <Plus size={15} />
                   </button>
                 </div>
                 <div className="hero-caption">
-                  <span className="caption-line" /> TWO SCREENS. ONE HAPPIER PLANT.
+                  <span className="caption-line" /> 1.28″ ROUND GC9A01 · 2.0″ RECT ST7789
                 </div>
                 {p > 0.68 && (
                   <div className="hero-buses" aria-label="Highlight wiring bus">
                     {[
-                      ["all", "All nets · 11"],
+                      ["all", "All nets · 14"],
                       ["power", "Power rail"],
                       ["i2c", "Shared I²C"],
-                      ["spi", "Dedicated SPI"],
+                      ["spi", "Dual SPI"],
                       ["adc", "Soil ADC"],
                     ].map(([id, label]) => (
                       <button
@@ -966,23 +1139,24 @@ export default function Showcase() {
                         {label}
                       </button>
                     ))}
-                    <small>Electrical routes are illustrative; exact pin mappings below.</small>
+                    <small>Scroll down for the full live interactive KiCad circuit schematic.</small>
                   </div>
                 )}
               </div>
+
               <div className={`product-stage ${p > 0.2 ? "exploded" : ""}`}>
                 <div className="product-orbit" />
                 <div className="orbit orbit-two" />
                 <div className="stage-kicker">
-                  GARDENING BUDDY{" "}
+                  GARDEN BUDDY{" "}
                   <span>
-                    / {phase === 0 ? "ASSEMBLED" : phase === 1 ? "EXPLODED VIEW" : "LIVE NET MAP"}
+                    / {phase === 0 ? "ASSEMBLED" : phase === 1 ? "EXPLODED VIEW" : "14-NET MAP"}
                   </span>
                 </div>
                 <Hardware progress={p} filter={filter} onSelect={setSelected} />
                 <div className="stage-bottom">
-                  <span>{p > 0.3 ? "TAP A MODULE TO EXPLORE" : "102 × 212 × 61.8 mm"}</span>
-                  <span>ILLUSTRATIVE HARDWARE VIEW</span>
+                  <span>{p > 0.3 ? "TAP A MODULE TO EXPLORE" : "9 MODULES · 14 VERIFIED NETS"}</span>
+                  <span>ESP32-C3 DUAL-TFT SYSTEM</span>
                 </div>
                 {component && (
                   <section className="component-popover" aria-label="Component details">
@@ -1003,17 +1177,18 @@ export default function Showcase() {
                 )}
               </div>
             </div>
+
             <div className="hero-bottom wrap">
               <div className="scroll-hint">
                 <span className="scroll-icon">
                   <ArrowDown size={14} />
                 </span>
                 <span>
-                  SCROLL TO DISCOVER <small>Watch the story unfold</small>
+                  SCROLL TO DISCOVER <small>Watch the system unfold</small>
                 </span>
               </div>
               <div className="scroll-progress">
-                {["THE COMPANION", "THE COMPONENTS", "THE CONNECTIONS"].map((s, i) => (
+                {["THE COMPANION", "9 MODULES", "14 CONNECTIONS"].map((s, i) => (
                   <div className={phase === i ? "current" : ""} key={s}>
                     <span>0{i + 1}</span>
                     <i />
@@ -1029,13 +1204,15 @@ export default function Showcase() {
             </div>
           </div>
         </section>
+
+        <ProblemHook />
         <Architecture />
         <Simulator />
         <Gallery />
+        <ResultsAndFuture />
+        <Sustainability />
         <References />
         <ContactTeam />
-        <Evidence />
-        <Sustainability />
       </main>
       <Footer />
     </>

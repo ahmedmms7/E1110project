@@ -2,11 +2,45 @@
 /* eslint-disable jsx-a11y/prefer-tag-over-role */
 import { useState } from "react";
 import { modules, nets } from "./project-data";
-export type Mood = "happy" | "neutral" | "sad";
+
+export type Mood = "happy" | "neutral" | "sad" | "error";
 export type Readings = { soil: number; lux: number; temp: number; humidity: number };
-export const defaultReadings: Readings = { soil: 68, lux: 14200, temp: 25.4, humidity: 54 };
+export const defaultReadings: Readings = { soil: 42, lux: 24000, temp: 24.0, humidity: 52 };
+
 export function Face({ mood = "happy" }: { mood?: Mood }) {
-  const color = mood === "happy" ? "#bbf495" : mood === "neutral" ? "#f3c867" : "#fa8b80";
+  const color =
+    mood === "happy"
+      ? "#bbf495"
+      : mood === "neutral"
+        ? "#f3c867"
+        : mood === "sad"
+          ? "#fa8b80"
+          : "#cbd5e1";
+
+  if (mood === "error") {
+    return (
+      <g className="face face-error" style={{ color }}>
+        <polygon
+          points="60,24 98,90 22,90"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="7"
+          strokeLinejoin="round"
+        />
+        <line
+          x1="60"
+          y1="46"
+          x2="60"
+          y2="68"
+          stroke="currentColor"
+          strokeWidth="7"
+          strokeLinecap="round"
+        />
+        <circle cx="60" cy="80" r="4.5" fill="currentColor" />
+      </g>
+    );
+  }
+
   return (
     <g className={`face face-${mood}`} style={{ color }}>
       <g className="eyes" fill="currentColor">
@@ -31,35 +65,43 @@ export function Face({ mood = "happy" }: { mood?: Mood }) {
     </g>
   );
 }
+
 export function Telemetry({
   values = defaultReadings,
+  score,
   adc = false,
 }: {
   values?: Readings;
+  score?: number;
   adc?: boolean;
 }) {
+  const pct = score !== undefined ? Math.round((score / 4) * 100) : 100;
   return (
-    <g fill="#c6eef3" fontFamily="IBM Plex Mono, monospace" fontSize="8">
-      <text x="7" y="14">
+    <g fill="#c6eef3" fontFamily="IBM Plex Mono, monospace" fontSize="7.6">
+      <text x="6" y="12" fill="#86efac" fontWeight="700">
+        HEALTH: {score ?? 4}/4 ({pct}%)
+      </text>
+      <text x="6" y="23">
         SOIL: {values.soil}%
       </text>
-      <text x="7" y="25">
-        LUX: {values.lux}
+      <text x="6" y="34">
+        LUX: {values.lux.toLocaleString()} lx
       </text>
-      <text x="7" y="36">
-        TEMP: {values.temp.toFixed(1)}C
+      <text x="6" y="45">
+        TEMP: {values.temp.toFixed(1)} °C
       </text>
-      <text x="7" y="47">
-        RH: {values.humidity}% 1013 hPa
+      <text x="6" y="56">
+        RH: {values.humidity}%
       </text>
       {adc && (
-        <text x="7" y="58">
-          ADC: {(2.5 - values.soil * 0.013).toFixed(2)} V
+        <text x="6" y="67" fill="#93c5fd">
+          GPIO0: {(2.5 - values.soil * 0.013).toFixed(2)} V
         </text>
       )}
     </g>
   );
 }
+
 export function Board({ id, w, h, color }: { id: string; w: number; h: number; color: string }) {
   if (id === "DS1")
     return (
@@ -81,14 +123,14 @@ export function Board({ id, w, h, color }: { id: string; w: number; h: number; c
   if (id === "DS2")
     return (
       <>
-        <rect width={w} height={h} rx="4" fill={color} />
-        <rect x="8" y="7" width={w - 16} height={h - 17} rx="2" fill="#09181c" />
-        <g transform="translate(10,7)">
+        <rect width={w} height={h} rx="5" fill={color} />
+        <rect x="7" y="6" width={w - 14} height={h - 14} rx="3" fill="#081620" />
+        <g transform="translate(8,7)">
           <Telemetry />
         </g>
         <g fill="#d6b776">
-          {[0, 1, 2, 3].map((i) => (
-            <rect key={i} x={27 + i * 17} y={h - 5} width="7" height="6" />
+          {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+            <rect key={i} x={14 + i * 12} y={h - 4} width="5" height="5" />
           ))}
         </g>
       </>
@@ -103,30 +145,38 @@ export function Board({ id, w, h, color }: { id: string; w: number; h: number; c
           fill="none"
           strokeWidth="2"
         />
-        <rect x="18" y="12" width="28" height="23" fill="#111713" />
-        <text x="20" y="27" fill="#ddd" fontSize="5">
-          TLC555
+        <rect x="14" y="10" width="38" height="24" rx="2" fill="#111713" />
+        <text x="17" y="25" fill="#e2e8f0" fontSize="6">
+          Soil v2.0
         </text>
       </>
     );
   if (id === "BT1")
     return (
       <>
-        <rect width={w} height={h} rx="8" fill="#193b29" />
-        {[0, 1].map((i) => (
+        <rect width={w} height={h} rx="8" fill="#18221d" />
+        {[0, 1, 2, 3].map((i) => (
           <g key={i}>
-            <rect x={9 + i * 48} y="8" width="42" height={h - 16} rx="13" fill="url(#battery)" />
-            <text
-              transform={`translate(${33 + i * 48},${h - 18}) rotate(-90)`}
-              fontSize="10"
-              fill="#cde1ce"
-            >
-              Li-ion 3.7V
-            </text>
+            <rect x={8 + i * 23} y="8" width="19" height={h - 16} rx="5" fill="url(#battery)" />
+            <rect x={8 + i * 23} y="8" width="19" height="14" rx="3" fill="#c88a4b" />
           </g>
         ))}
         <text x="7" y={h + 10} fontSize="7" fill="#526d56">
-          2S · BMS PROTECTED
+          4×1.5V AA · 6.0V
+        </text>
+      </>
+    );
+  if (id === "SW1")
+    return (
+      <>
+        <rect width={w} height={h} rx="8" fill="#1e2923" stroke="#53685c" strokeWidth="1.5" />
+        <rect x="14" y="12" width={w - 28} height={h - 24} rx="4" fill="#334139" />
+        <text x="27" y="36" fill="#ffffff" fontSize="12" fontWeight="700">
+          I
+        </text>
+        <circle cx={w - 28} cy="32" r="5" fill="none" stroke="#ffffff" strokeWidth="1.8" />
+        <text x="8" y={h + 10} fontSize="7" fill="#526d56">
+          SPST POWER CUTOFF
         </text>
       </>
     );
@@ -156,15 +206,15 @@ export function Board({ id, w, h, color }: { id: string; w: number; h: number; c
       />
       {id === "U1" ? (
         <>
-          <rect x="18" y="33" width="43" height="44" rx="2" fill="#bec5c4" />
-          <text x="22" y="55" fontSize="8" fill="#414945">
+          <rect x="18" y="33" width="48" height="44" rx="2" fill="#bec5c4" />
+          <text x="24" y="55" fontSize="8" fill="#1e293b" fontWeight="700">
             ESP32
           </text>
-          <text x="28" y="67" fontSize="7" fill="#414945">
+          <text x="33" y="67" fontSize="7" fill="#1e293b">
             C3
           </text>
           <rect
-            x="24"
+            x="26"
             y={h - 15}
             width="32"
             height="19"
@@ -173,7 +223,7 @@ export function Board({ id, w, h, color }: { id: string; w: number; h: number; c
             stroke="#5b615e"
             strokeWidth="3"
           />
-          <rect x="21" y="5" width="28" height="12" rx="2" fill="#e3d8bb" />
+          <rect x="24" y="5" width="32" height="12" rx="2" fill="#e3d8bb" />
         </>
       ) : id === "U2" ? (
         <>
@@ -202,6 +252,7 @@ export function Board({ id, w, h, color }: { id: string; w: number; h: number; c
     </>
   );
 }
+
 export default function Hardware({
   progress,
   filter,
@@ -217,7 +268,7 @@ export default function Hardware({
   const pos = (id: string) => {
     const m = modules.find((m) => m.id === id)!;
     const initial =
-      id === "DS1" ? { x: 338, y: 150 } : id === "DS2" ? { x: 338, y: 297 } : { x: 362, y: 232 };
+      id === "DS1" ? { x: 338, y: 146 } : id === "DS2" ? { x: 335, y: 278 } : { x: 362, y: 232 };
     return { x: initial.x + (m.x - initial.x) * e, y: initial.y + (m.y - initial.y) * e };
   };
   return (
@@ -225,7 +276,7 @@ export default function Hardware({
       className="hardware-svg"
       viewBox="0 0 760 620"
       role="group"
-      aria-label="Illustrative Gardening Buddy hardware assembly. Scroll to separate its eight modules."
+      aria-label="Illustrative Garden Buddy hardware assembly. Scroll to separate its nine modules."
     >
       <defs>
         <linearGradient id="shell" x1="0" y1="0" x2="1" y2=".3">
@@ -238,9 +289,9 @@ export default function Hardware({
           <stop offset="1" stopColor="#94a58d" />
         </linearGradient>
         <linearGradient id="battery">
-          <stop stopColor="#426945" />
-          <stop offset=".5" stopColor="#6b8e5e" />
-          <stop offset="1" stopColor="#2a492e" />
+          <stop stopColor="#1e2421" />
+          <stop offset=".5" stopColor="#323b36" />
+          <stop offset="1" stopColor="#141916" />
         </linearGradient>
         <filter id="product-shadow" x="-100%" y="-50%" width="300%" height="250%">
           <feDropShadow dx="5" dy="17" stdDeviation="13" floodColor="#294831" floodOpacity=".14" />
@@ -292,9 +343,9 @@ export default function Hardware({
             </g>
           ))}
         </g>
-        <rect x="384" y="348" width="29" height="5" rx="1" fill="#29442b" />
-        <text x="363" y="366" fontFamily="Manrope" fill="#7c8f72" fontSize="7" letterSpacing="1.3">
-          GARDENING BUDDY
+        <rect x="384" y="366" width="29" height="4" rx="1" fill="#29442b" />
+        <text x="366" y="380" fontFamily="Manrope" fill="#7c8f72" fontSize="6.5" letterSpacing="1.3">
+          GARDEN BUDDY
         </text>
       </g>
       <g opacity={reveal} className="wire-layer">
@@ -304,10 +355,10 @@ export default function Hardware({
               to = pos(id);
             const fm = modules.find((m) => m.id === net.from)!;
             const x1 = from.x + fm.w,
-              y1 = from.y + 12 + (i % 8) * 9,
+              y1 = from.y + 10 + (i % 8) * 8,
               x2 = to.x,
-              y2 = to.y + 9 + (i % 5) * 8;
-            const mid = (x1 + x2) / 2 + (i - 5) * 5;
+              y2 = to.y + 8 + (i % 5) * 8;
+            const mid = (x1 + x2) / 2 + (i - 7) * 4;
             const d = `M${x1},${y1} H${mid} V${y2} H${x2}`;
             const active = filter === "all" || filter === net.group;
             return (
@@ -375,7 +426,7 @@ export default function Hardware({
                 {m.id}
               </text>
               <text x="0" y={m.h + 36} fill="#7b8b7a" fontSize="7">
-                {m.part}
+                {m.shortPart}
               </text>
             </g>
           </g>
@@ -384,14 +435,14 @@ export default function Hardware({
       <g opacity={1 - e} fill="#6e8469" fontFamily="IBM Plex Mono" fontSize="8">
         <path d="M492 152 H559" stroke="#a9b7a0" />
         <text x="567" y="151">
-          1.28″ TFT
+          1.28″ GC9A01 TFT
         </text>
         <text x="567" y="164" fill="#9cab93">
           A little personality.
         </text>
         <path d="M480 317 H548" stroke="#a9b7a0" />
         <text x="556" y="316">
-          0.96″ OLED
+          2.0″ ST7789 TFT
         </text>
         <text x="556" y="329" fill="#9cab93">
           A lot of insight.
